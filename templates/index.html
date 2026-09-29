@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TwinOpt — AI & RL Digital Twin</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: { 500: '#06b6d4', 600: '#0891b2', 700: '#0e7490' },
+                        darkbg: '#0f172a',
+                        cardbg: '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-darkbg text-slate-100 font-sans min-h-screen flex flex-col">
+
+    <!-- Top Navigation Header -->
+    <header class="bg-cardbg border-b border-slate-700 px-6 py-4 flex justify-between items-center sticky top-0 z-50 shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="bg-brand-500 text-slate-900 p-2 rounded-lg font-bold text-xl">
+                <i class="fa-solid fa-industry"></i>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-wide text-white">TwinOpt</h1>
+                <p class="text-xs text-slate-400">AI + Reinforcement Learning Digital Twin</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-4">
+            <span id="live-status-pill" class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 mr-2 animate-pulse"></span> SYSTEM NORMAL
+            </span>
+            <button onclick="runSimulationStep()" class="bg-brand-600 hover:bg-brand-500 text-white font-medium px-4 py-2 rounded-lg shadow-md transition flex items-center space-x-2">
+                <i class="fa-solid fa-play text-sm"></i>
+                <span>Step Simulation</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="bg-slate-900 border-b border-slate-800 px-6">
+        <div class="flex space-x-8">
+            <button onclick="switchTab('overview')" id="tab-overview" class="tab-btn py-3 px-1 text-brand-500 border-b-2 border-brand-500 font-medium text-sm flex items-center space-x-2">
+                <i class="fa-solid fa-chart-pie"></i><span>Factory Overview</span>
+            </button>
+            <button onclick="switchTab('digital-twin')" id="tab-digital-twin" class="tab-btn py-3 px-1 text-slate-400 hover:text-slate-200 border-b-2 border-transparent font-medium text-sm flex items-center space-x-2">
+                <i class="fa-solid fa-microchip"></i><span>Digital Twin Topology</span>
+            </button>
+            <button onclick="switchTab('rl-opt')" id="tab-rl-opt" class="tab-btn py-3 px-1 text-slate-400 hover:text-slate-200 border-b-2 border-transparent font-medium text-sm flex items-center space-x-2">
+                <i class="fa-solid fa-brain"></i><span>RL Optimization & What-If</span>
+            </button>
+            <button onclick="switchTab('copilot')" id="tab-copilot" class="tab-btn py-3 px-1 text-slate-400 hover:text-slate-200 border-b-2 border-transparent font-medium text-sm flex items-center space-x-2">
+                <i class="fa-solid fa-robot"></i><span>Industrial Copilot</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+
+        <!-- TAB 1: OVERVIEW -->
+        <section id="view-overview" class="tab-view space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md">
+                    <div class="text-slate-400 text-sm font-medium">Total Production</div>
+                    <div id="metric-prod" class="text-3xl font-bold text-white mt-2">0 units</div>
+                    <div class="text-xs text-emerald-400 mt-1"><i class="fa-solid fa-arrow-up"></i> Cumulative goods</div>
+                </div>
+                <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md">
+                    <div class="text-slate-400 text-sm font-medium">Power Consumption</div>
+                    <div id="metric-power" class="text-3xl font-bold text-cyan-400 mt-2">0.0 kW</div>
+                    <div class="text-xs text-slate-400 mt-1">Real-time load</div>
+                </div>
+                <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md">
+                    <div class="text-slate-400 text-sm font-medium">Avg Line Health</div>
+                    <div id="metric-health" class="text-3xl font-bold text-emerald-400 mt-2">100%</div>
+                    <div class="text-xs text-slate-400 mt-1">3 Sequential machines</div>
+                </div>
+                <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md">
+                    <div class="text-slate-400 text-sm font-medium">Current Step</div>
+                    <div id="metric-step" class="text-3xl font-bold text-amber-400 mt-2">0</div>
+                    <div class="text-xs text-slate-400 mt-1">10-min ticks</div>
+                </div>
+            </div>
+
+            <!-- Recent Telemetry Table -->
+            <div class="bg-cardbg rounded-xl border border-slate-700 p-5 shadow-md">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center space-x-2">
+                    <i class="fa-solid fa-list-check text-brand-500"></i>
+                    <span>Real-Time Telemetry Logs</span>
+                </h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm text-slate-300">
+                        <thead class="bg-slate-800 text-slate-400 uppercase text-xs">
+                            <tr>
+                                <th class="p-3">Step</th>
+                                <th class="p-3">M1 Temp (°C)</th>
+                                <th class="p-3">M2 Temp (°C)</th>
+                                <th class="p-3">M3 Temp (°C)</th>
+                                <th class="p-3">Power (kW)</th>
+                                <th class="p-3">Finished Goods</th>
+                            </tr>
+                        </thead>
+                        <tbody id="telemetry-table-body" class="divide-y divide-slate-800">
+                            <tr><td colspan="6" class="p-4 text-center text-slate-500">No telemetry recorded yet. Click 'Step Simulation'.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 2: DIGITAL TWIN TOPOLOGY -->
+        <section id="view-digital-twin" class="tab-view hidden space-y-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="machine-cards-container">
+                <!-- Dynamically Populated Machine Cards -->
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Transformer Forecasting Card -->
+                <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md">
+                    <h3 class="text-lg font-semibold text-white mb-3 flex items-center space-x-2">
+                        <i class="fa-solid fa-chart-line text-brand-500"></i>
+                        <span>Transformer Time-Series Forecast (M2)</span>
+                    </h3>
+                    <div class="grid grid-cols-2 gap-4 mt-4">
+                        <div class="bg-slate-800 p-4 rounded-lg">
+                            <span class="text-xs text-slate-400">Predicted Temp (t+1)</span>
+                            <div id="trans-temp" class="text-2xl font-bold text-amber-400 mt-1">-- °C</div>
+                        </div>
+                        <div class="bg-slate-800 p-4 rounded-lg">
+                            <span class="text-xs text-slate-400">Predicted Vibration (t+1)</span>
+                            <div id="trans-vib" class="text-2xl font-bold text-cyan-400 mt-1">-- mm/s</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ML Model Metrics Evaluation Card -->
+                <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-lg font-semibold text-white flex items-center space-x-2">
+                            <i class="fa-solid fa-square-poll-vertical text-emerald-400"></i>
+                            <span>ML Model Performance</span>
+                        </h3>
+                        <button onclick="evaluateML()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-1.5 rounded border border-slate-600 transition">Evaluate</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs text-slate-300">
+                            <thead class="bg-slate-800 text-slate-400">
+                                <tr><th class="p-2">Model</th><th class="p-2">MAE</th><th class="p-2">RMSE</th><th class="p-2">R²</th></tr>
+                            </thead>
+                            <tbody id="ml-metrics-body">
+                                <tr><td colspan="4" class="p-3 text-center text-slate-500">Click 'Evaluate' to run metrics.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 3: RL OPTIMIZATION & WHAT-IF -->
+        <section id="view-rl-opt" class="tab-view hidden space-y-6">
+            <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md space-y-4">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-lg font-semibold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-amber-400"></i>
+                        <span>What-If Digital Twin Simulator</span>
+                    </h3>
+                </div>
+                <div class="space-y-2">
+                    <label class="text-sm text-slate-300 flex justify-between">
+                        <span>Machine 2 Speed Multiplier</span>
+                        <span id="slider-val" class="font-bold text-brand-500">1.0x</span>
+                    </label>
+                    <input type="range" id="speed-slider" min="0.0" max="1.5" step="0.1" value="1.0" oninput="updateWhatIf()" class="w-full accent-cyan-500">
+                </div>
+                <div class="grid grid-cols-2 gap-4 pt-2">
+                    <div class="bg-slate-800 p-3 rounded">
+                        <span class="text-xs text-slate-400">Simulated Power Load</span>
+                        <div id="whatif-power" class="text-xl font-bold text-white">14.0 kW</div>
+                    </div>
+                    <div class="bg-slate-800 p-3 rounded">
+                        <span class="text-xs text-slate-400">Expected Steady Temp</span>
+                        <div id="whatif-temp" class="text-xl font-bold text-amber-400">80.0 °C</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Policy Benchmark Execution -->
+            <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-flask text-brand-500"></i>
+                        <span>Controlled RL Policy Benchmarks</span>
+                    </h3>
+                    <button onclick="evaluateRL()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-4 py-2 rounded shadow transition">Run Experiments</button>
+                </div>
+                <div class="h-64">
+                    <canvas id="benchmarkChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- TAB 4: INDUSTRIAL COPILOT -->
+        <section id="view-copilot" class="tab-view hidden space-y-6">
+            <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md space-y-4">
+                <h3 class="text-lg font-semibold text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-robot text-brand-500"></i>
+                    <span>Industrial AI Copilot Assistant</span>
+                </h3>
+                <div id="chat-box" class="bg-slate-900 p-4 rounded-lg h-64 overflow-y-auto space-y-3 border border-slate-800 text-sm">
+                    <div class="bg-slate-800 p-3 rounded-lg max-w-2xl text-slate-200">
+                        Hello! I am your industrial digital twin assistant. Ask me questions regarding machine health, power efficiency, or RL speed control choices.
+                    </div>
+                </div>
+                <div class="flex space-x-3">
+                    <input type="text" id="copilot-input" placeholder="e.g., Why did the system adjust Machine 2's speed?" class="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-brand-500">
+                    <button onclick="sendCopilotQuery()" class="bg-brand-600 hover:bg-brand-500 text-white px-5 py-2 rounded-lg text-sm font-medium transition">Ask AI</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- UI Logic & AJAX JS -->
+    <script>
+        let benchmarkChart = null;
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-view').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => {
+                el.classList.remove('text-brand-500', 'border-brand-500');
+                el.classList.add('text-slate-400', 'border-transparent');
+            });
+
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tab-${tabId}`);
+            activeBtn.classList.add('text-brand-500', 'border-brand-500');
+            activeBtn.classList.remove('text-slate-400', 'border-transparent');
+        }
+
+        async function fetchState() {
+            const res = await fetch('/api/state');
+            const data = await res.json();
+            renderDashboard(data);
+        }
+
+        function renderDashboard(data) {
+            document.getElementById('metric-prod').innerText = `${data.total_production} units`;
+            document.getElementById('metric-power').innerText = `${data.total_power_kw} kW`;
+            document.getElementById('metric-health').innerText = `${data.avg_health}%`;
+            document.getElementById('metric-step').innerText = data.step;
+
+            // Render telemetry table
+            const tbody = document.getElementById('telemetry-table-body');
+            if (data.history.length > 0) {
+                tbody.innerHTML = data.history.map(row => `
+                    <tr class="hover:bg-slate-800/50">
+                        <td class="p-3">${row.step}</td>
+                        <td class="p-3">${row.m1_temp} °C</td>
+                        <td class="p-3">${row.m2_temp} °C</td>
+                        <td class="p-3">${row.m3_temp} °C</td>
+                        <td class="p-3">${row.power_kw} kW</td>
+                        <td class="p-3">${row.production}</td>
+                    </tr>
+                `).join('');
+            }
+
+            // Render Machine Cards
+            const container = document.getElementById('machine-cards-container');
+            container.innerHTML = Object.values(data.machines).map(m => {
+                const statusColor = m.status === 'NORMAL' ? 'bg-emerald-500' : (m.status === 'WARNING' ? 'bg-amber-500' : 'bg-rose-500');
+                return `
+                    <div class="bg-cardbg p-5 rounded-xl border border-slate-700 shadow-md space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-white">${m.name}</span>
+                            <span class="text-xs px-2 py-0.5 rounded text-white font-semibold ${statusColor}">${m.status}</span>
+                        </div>
+                        <div class="space-y-1 text-xs text-slate-300">
+                            <div class="flex justify-between"><span>Temperature:</span><span class="font-medium text-white">${m.temperature} °C</span></div>
+                            <div class="flex justify-between"><span>Vibration:</span><span class="font-medium text-white">${m.vibration} mm/s</span></div>
+                            <div class="flex justify-between"><span>Power:</span><span class="font-medium text-white">${m.power} kW</span></div>
+                            <div class="flex justify-between"><span>RPM:</span><span class="font-medium text-white">${m.rpm}</span></div>
+                        </div>
+                        <div class="w-full bg-slate-800 rounded-full h-2">
+                            <div class="bg-emerald-400 h-2 rounded-full" style="width: ${Math.max(0, m.health * 100)}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function runSimulationStep() {
+            const res = await fetch('/api/step', { method: 'POST' });
+            const data = await res.json();
+            renderDashboard(data);
+            fetchTransformerPrediction();
+        }
+
+        async function fetchTransformerPrediction() {
+            const res = await fetch('/api/transformer-predict');
+            const data = await res.json();
+            document.getElementById('trans-temp').innerText = `${data.predicted_temp} °C`;
+            document.getElementById('trans-vib').innerText = `${data.predicted_vibration} mm/s`;
+        }
+
+        async function evaluateML() {
+            const res = await fetch('/api/evaluate-ml');
+            const data = await res.json();
+            const tbody = document.getElementById('ml-metrics-body');
+            tbody.innerHTML = data.map(m => `
+                <tr>
+                    <td class="p-2 font-medium">${m.Model}</td>
+                    <td class="p-2">${m.MAE}</td>
+                    <td class="p-2">${m.RMSE}</td>
+                    <td class="p-2">${m.R2_Score}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function evaluateRL() {
+            const res = await fetch('/api/evaluate-rl', { method: 'POST' });
+            const data = await res.json();
+            
+            const labels = data.benchmarks.map(b => b.Policy);
+            const prods = data.benchmarks.map(b => b["Production (Units)"]);
+            const powers = data.benchmarks.map(b => b["Energy (kWh)"]);
+
+            const ctx = document.getElementById('benchmarkChart').getContext('2d');
+            if (benchmarkChart) benchmarkChart.destroy();
+
+            benchmarkChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Production (Units)', data: prods, backgroundColor: '#06b6d4' },
+                        { label: 'Energy (kWh)', data: powers, backgroundColor: '#f59e0b' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#94a3b8' } } },
+                    scales: {
+                        x: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                        y: { ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }
+                    }
+                }
+            });
+        }
+
+        function updateWhatIf() {
+            const factor = parseFloat(document.getElementById('speed-slider').value);
+            document.getElementById('slider-val').innerText = `${factor.toFixed(1)}x`;
+            const power = (2.0 + Math.pow(factor, 1.5) * 12.0).toFixed(1);
+            const temp = (65.0 + Math.pow(factor, 1.8) * 15.0).toFixed(1);
+            document.getElementById('whatif-power').innerText = `${power} kW`;
+            document.getElementById('whatif-temp').innerText = `${temp} °C`;
+        }
+
+        async function sendCopilotQuery() {
+            const input = document.getElementById('copilot-input');
+            const q = input.value.trim();
+            if (!q) return;
+
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML += `<div class="bg-brand-600/20 text-brand-300 p-3 rounded-lg max-w-xl ml-auto border border-brand-500/30">${q}</div>`;
+            input.value = '';
+
+            const res = await fetch('/api/copilot', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: q })
+            });
+            const data = await res.json();
+            chatBox.innerHTML += `<div class="bg-slate-800 text-slate-200 p-3 rounded-lg max-w-2xl border border-slate-700">${data.response.replace(/\n/g, '<br>')}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        // Initialize state on page load
+        fetchState();
+        fetchTransformerPrediction();
+    </script>
+</body>
+</html>
